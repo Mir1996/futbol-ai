@@ -6,21 +6,62 @@
     <title>Futbol AI Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --main-green: #4db300; --dark-bg: #0d0d0d; --card-bg: #1a1a1a; --yellow: #ffcc00; --tg-blue: #0088cc; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--dark-bg); color: white; margin: 0; padding: 0; overflow: hidden; }
-        .header { background: #1a3a00; padding: 15px; text-align: center; font-weight: bold; border-bottom: 2px solid var(--main-green); }
-        .content { height: calc(100vh - 130px); overflow-y: auto; padding: 15px; background: linear-gradient(180deg, #0d0d0d 0%, #1a2a00 100%); }
-        .match-card { background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 12px; position: relative; }
+        :root {
+            --main-green: #4db300;
+            --dark-bg: #0d0d0d;
+            --card-bg: #1a1a1a;
+            --yellow: #ffcc00;
+            --whatsapp: #25D366;
+            --telegram: #0088cc;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--dark-bg);
+            color: white;
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(to bottom, #2a5a00, #1a3a00);
+            padding: 15px; text-align: center; font-weight: bold; border-bottom: 2px solid var(--main-green);
+        }
+
+        .content {
+            flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 110px;
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a3a00 100%);
+        }
+
+        .match-card {
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 12px;
+        }
+
         .selected-card { border: 2px solid var(--main-green) !important; background: rgba(77, 179, 0, 0.1); }
-        .tab-bar { position: fixed; bottom: 0; width: 100%; background: #111; display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--main-green); }
-        .tab-item { text-align: center; font-size: 11px; color: #888; cursor: pointer; flex: 1; }
+
+        .ai-stats-row { display: flex; justify-content: space-between; margin-top: 10px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; font-size: 13px; }
+
+        .score-input { width: 45px; background: #333; border: 1px solid var(--main-green); color: white; text-align: center; border-radius: 6px; padding: 8px 0; font-size: 16px; }
+
+        .tab-bar { 
+            position: fixed; bottom: 0; width: 100%; background: #111; 
+            display: flex; justify-content: space-around; padding: 15px 0; 
+            border-top: 2px solid var(--main-green); z-index: 100; 
+        }
+        .tab-item { text-align: center; font-size: 12px; color: #888; cursor: pointer; flex: 1; }
         .tab-item.active { color: var(--main-green); font-weight: bold; }
-        .tab-icon { font-size: 20px; display: block; margin-bottom: 4px; }
-        .btn-main { background: var(--main-green); border: none; color: white; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .score-input { width: 40px; background: #222; border: 1px solid var(--main-green); color: white; text-align: center; border-radius: 5px; padding: 5px; }
+        .tab-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+
+        .stat-box { flex: 1; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; color: black; }
         .hidden { display: none; }
-        .ref-box { border: 1px dashed var(--tg-blue); padding: 10px; border-radius: 8px; font-size: 11px; color: var(--tg-blue); margin: 10px 0; word-break: break-all; }
-        .live-tag { background: red; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; vertical-align: middle; }
+        
+        .share-btn { 
+            flex: 1; padding: 12px; border-radius: 12px; border: none; color: white; 
+            font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 14px;
+        }
+        
+        #user-photo { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--main-green); margin-right: 12px; }
     </style>
 </head>
 <body>
@@ -29,180 +70,190 @@
 
 <div class="content">
     <div id="page-oyunlar">
-        <div id="live-matches"><p style="text-align:center;">Canlı oyunlar yüklənir...</p></div>
+        <div id="ai-match-list"><p style="text-align:center;">Oyunlar yüklənir...</p></div>
     </div>
 
     <div id="page-kupon" class="hidden">
-        <div style="text-align:center; color:var(--yellow); margin-bottom:10px;">Maksimum 5 oyun seçə bilərsiniz.</div>
+        <div style="text-align:center; font-size:12px; color:var(--yellow); margin-bottom:10px;">Seçilən: <span id="selected-count">0</span>/5</div>
         <div id="selection-list"></div>
-        <button class="btn-main" onclick="confirmCoupon()" style="background:linear-gradient(to bottom, #e60000, #990000)">Kuponu Təsdiqlə</button>
+        <button onclick="confirmCoupon()" style="background: linear-gradient(to bottom, #e60000, #990000); border:none; color:white; padding:15px; width:100%; border-radius:10px; font-weight:bold;">Kuponu Təsdiqlə</button>
     </div>
 
     <div id="page-reytinq" class="hidden">
-        <div style="text-align:center; font-size:12px; color:var(--yellow); margin-bottom:15px;">🏆 Aylıq Reytinq (Hər 30 gündən bir sıfırlanır)</div>
-        <div id="reytinq-container"></div>
+        <div style="text-align:center; font-size:11px; color:var(--yellow); margin-bottom:15px;">📊 Aylıq Reytinq (Hər 30 gündən bir sıfırlanır)</div>
+        <div id="reytinq-list">
+            <div class="match-card">🥇 Elvin_90 <span style="float:right; color:var(--main-green)">48 Qalib</span></div>
+            <div class="match-card">🥈 Murad_AI <span style="float:right; color:var(--main-green)">42 Qalib</span></div>
+        </div>
     </div>
 
     <div id="page-bildiris" class="hidden">
-        <div class="match-card" style="border-left: 5px solid var(--main-green);">
+        <div class="match-card" style="border-left: 4px solid var(--main-green);" onclick="this.querySelector('.details').classList.toggle('hidden')">
             <strong>✅ Kuponunuz Qazandı!</strong>
-            <p style="font-size:12px; color:#aaa; margin-top:5px;">Təbriklər! Son kuponunuzdakı bütün proqnozlar düz çıxdı.</p>
+            <div class="details hidden" style="margin-top:10px; font-size:12px; color:#aaa;">
+                Son kuponunuzdakı 3 oyunun hamısı düzgün tapıldı!
+            </div>
         </div>
     </div>
 
     <div id="page-profil" class="hidden">
-        <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:15px; border-radius:12px;">
-            <div id="user-img" style="width:50px; height:50px; background:#444; border-radius:50%; margin-right:15px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:24px;">👤</div>
-            <div><strong id="user-display-name">İstifadəçi</strong><br><small style="color:var(--main-green);">🏆 Top Analitik</small></div>
-        </div>
-        
-        <div style="margin-top:20px; background:#1a1a1a; padding:15px; border-radius:12px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Kuponlarım:</span><b id="stat-total">0</b></div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>Qaliblər:</span><b id="stat-win" style="color:var(--main-green)">0</b></div>
-            <div style="display:flex; justify-content:space-between;"><span>Referal Sayı:</span><b id="stat-ref">0</b></div>
+        <div style="background: linear-gradient(to right, #1a3a00, #2a5a00); padding: 15px; border-radius: 12px; display: flex; align-items: center; border: 1px solid var(--main-green);">
+            <div id="user-photo" style="background: #444; display: flex; align-items: center; justify-content: center; font-size: 24px;">👤</div>
+            <div><h3 id="user-name" style="margin:0;">İstifadəçi</h3><small>🏆 Top AI Analitiki</small></div>
         </div>
 
-        <div style="text-align:center; margin-top:20px;">
-            <small>Dəvət Linkin:</small>
-            <div class="ref-box" id="ref-url">https://t.me/FutbolAI_bot?start=user</div>
-            <button class="btn-main" onclick="shareTelegram()" style="background:var(--tg-blue)">Dostlarını Dəvət Et</button>
+        <div style="margin-top: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 5px;">
+            <p style="padding: 10px; border-bottom: 1px solid #333; margin: 0;">🎫 Kuponlarım: <b id="stat-total" style="float:right">0</b></p>
+            <p style="padding: 10px; border-bottom: 1px solid #333; margin: 0;">🏆 Qalib Kuponlar: <b id="stat-win" style="float:right; color:var(--main-green)">0</b></p>
+            <p style="padding: 10px; border-bottom: 1px solid #333; margin: 0;">❌ Uduzanlar: <b style="float:right; color:#ff4d4d">0</b></p>
+            <p style="padding: 10px; margin: 0;">👥 Referal Sayı: <b id="stat-ref" style="float:right">0</b></p>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <div class="stat-box" style="background: var(--yellow);">Toplam<br><span id="box-total">0</span></div>
+            <div class="stat-box" style="background: var(--main-green); color: white;">Qalib<br><span id="box-win">0</span></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <div id="ref-link" style="border: 1px dashed var(--telegram); padding: 10px; border-radius: 10px; font-size: 11px; color: var(--telegram); margin-bottom: 10px; word-break: break-all;">
+                https://t.me/FutbolAI_bot?start=user
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="#" id="wa-link" class="share-btn" style="background: var(--whatsapp);">WhatsApp</a>
+                <a href="#" id="tg-link" class="share-btn" style="background: var(--telegram);">Telegram</a>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="tab-bar">
     <div class="tab-item active" onclick="showPage('oyunlar', 'Günün Oyunları')"><span class="tab-icon">📅</span>Oyunlar</div>
-    <div class="tab-item" onclick="showPage('kupon', 'Kupon Yarat')"><span class="tab-icon">⚽</span>Kupon</div>
+    <div class="tab-item" onclick="showPage('kupon', 'Kupon Yarat')"><span class="tab-icon">🏆</span>Kupon</div>
     <div class="tab-item" onclick="showPage('reytinq', 'Reytinq')"><span class="tab-icon">📊</span>Reytinq</div>
     <div class="tab-item" onclick="showPage('bildiris', 'Bildiriş')"><span class="tab-icon">🔔</span>Bildiriş</div>
     <div class="tab-item" onclick="showPage('profil', 'Profil')"><span class="tab-icon">👤</span>Profil</div>
 </div>
 
 <script>
-const tg = window.Telegram.WebApp;
-tg.expand();
-
-// SƏNİN KOPYALADIĞIN API KEY VƏ HOST
+// Sənin kopyaladığın API Key və Host
 const API_KEY = "2265fceb51msh784b013337cecbp146572jsn0d4e6aecf921";
 const API_HOST = "soccer-football-info.p.rapidapi.com";
 
-let userStats = JSON.parse(localStorage.getItem('futbolAI_stats')) || { total: 0, win: 0, ref: 0 };
-let selectedMatches = [];
+const tg = window.Telegram.WebApp;
+tg.expand();
 
-function initUser() {
-    const user = tg.initDataUnsafe.user || { first_name: "Qonaq", id: "000" };
-    document.getElementById('user-display-name').innerText = user.first_name;
-    const link = `https://t.me/FutbolAI_bot?start=${user.id}`;
-    document.getElementById('ref-url').innerText = link;
-    updateUI();
+// Telegram Profil Məlumatları
+if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    const u = tg.initDataUnsafe.user;
+    document.getElementById('user-name').innerText = u.first_name;
+    const ref = `https://t.me/FutbolAI_bot?start=${u.id}`;
+    document.getElementById('ref-link').innerText = ref;
+    document.getElementById('wa-link').href = `https://wa.me/?text=Mənimlə qazan: ${ref}`;
+    document.getElementById('tg-link').href = `https://t.me/share/url?url=${ref}`;
 }
 
-function updateUI() {
-    document.getElementById('stat-total').innerText = userStats.total;
-    document.getElementById('stat-win').innerText = userStats.win;
-    document.getElementById('stat-ref').innerText = userStats.ref;
-    localStorage.setItem('futbolAI_stats', JSON.stringify(userStats));
-}
-
-async function fetchMatches() {
-    const container = document.getElementById('live-matches');
-    try {
-        const response = await fetch(`https://${API_HOST}/matches/list/live/`, {
-            method: "GET",
-            headers: { "x-rapidapi-key": API_KEY, "x-rapidapi-host": API_HOST }
-        });
-        const data = await response.json();
-        renderMatches(data.result || []);
-    } catch (err) {
-        console.error("API xətası:", err);
-        container.innerHTML = "<p style='text-align:center;'>Oyunlar yüklənə bilmədi.</p>";
-    }
-}
-
-function renderMatches(matches) {
-    const container = document.getElementById('live-matches');
-    const couponContainer = document.getElementById('selection-list');
-    container.innerHTML = "";
-    couponContainer.innerHTML = "";
-
-    if (matches.length === 0) {
-        container.innerHTML = "<p style='text-align:center;'>Hazırda canlı oyun yoxdur.</p>";
-        return;
-    }
-
-    matches.forEach(m => {
-        const aiProb = Math.floor(Math.random() * 25) + 65; // Simulyasiya edilmiş süni intellekt ehtimalı
-        
-        container.innerHTML += `<div class="match-card">
-            <div style="text-align:center;"><span class="live-tag">CANLI</span><br><b>${m.h} - ${m.a}</b></div>
-            <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:#888;">
-                <span style="color:var(--main-green)">AI: Qələbə 1</span><span>Ehtimal: ${aiProb}%</span>
-            </div>
-        </div>`;
-
-        couponContainer.innerHTML += `<div class="match-card" id="mc-${m.id}" onclick="toggleMatch('${m.id}')">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:14px;">${m.h} - ${m.a}</span>
-                <div onclick="event.stopPropagation()">
-                    <input type="number" class="score-input" placeholder="0"> : <input type="number" class="score-input" placeholder="0">
-                </div>
-            </div>
-        </div>`;
-    });
-}
-
-function toggleMatch(id) {
-    const el = document.getElementById(`mc-${id}`);
-    if (selectedMatches.includes(id)) {
-        selectedMatches = selectedMatches.filter(mid => mid !== id);
-        el.classList.remove('selected-card');
-    } else {
-        if (selectedMatches.length >= 5) return tg.showAlert("Maksimum 5 oyun!");
-        selectedMatches.push(id);
-        el.classList.add('selected-card');
-    }
+// Yaddaş Sistemi (Data silinmir)
+let data = JSON.parse(localStorage.getItem('futbol_ai')) || { t:0, w:0, r:0 };
+function updateStats() {
+    document.getElementById('stat-total').innerText = data.t;
+    document.getElementById('box-total').innerText = data.t;
+    document.getElementById('stat-win').innerText = data.w;
+    document.getElementById('box-win').innerText = data.w;
+    document.getElementById('stat-ref').innerText = data.r;
 }
 
 function confirmCoupon() {
-    if (selectedMatches.length === 0) return tg.showAlert("Oyun seçilməyib!");
-    userStats.total++;
-    updateUI();
-    tg.showConfirm("Kuponunuz qeydə alındı! AI analiz edilsin?", (ok) => {
-        if(ok) {
-            tg.showAlert("Analiz uğurla tamamlandı!");
-            showPage('bildiris', 'Bildiriş');
+    if(selectedGames.length === 0) return alert("Oyun seçin!");
+    data.t++;
+    localStorage.setItem('futbol_ai', JSON.stringify(data));
+    updateStats();
+    alert("Kupon qəbul edildi!");
+    tg.HapticFeedback.notificationOccurred('success');
+}
+
+// Oyunları API-dən Çəkmək (Xüsusi Filtr ilə)
+async function getMatches() {
+    const list = document.getElementById('ai-match-list');
+    const sList = document.getElementById('selection-list');
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+        const response = await fetch(`https://${API_HOST}/matches/list/date/${today}/`, {
+            method: "GET",
+            headers: { "x-rapidapi-key": API_KEY, "x-rapidapi-host": API_HOST }
+        });
+        const result = await response.json();
+        
+        // Filter: Yalnız seçilmiş liqalar və başlamamış oyunlar
+        const now = new Date().getTime();
+        const games = (result.result || []).filter(m => {
+            const league = m.l.toLowerCase();
+            const startTime = new Date(m.st).getTime();
+            
+            const isTargetLeague = league.includes("azerbaijan") || 
+                                   league.includes("turkey") || 
+                                   league.includes("premier league") || 
+                                   league.includes("la liga") || 
+                                   league.includes("serie a") || 
+                                   league.includes("bundesliga") || 
+                                   league.includes("ligue 1");
+
+            return isTargetLeague && startTime > now;
+        });
+
+        list.innerHTML = "";
+        sList.innerHTML = "";
+
+        if (games.length === 0) {
+            list.innerHTML = "<p style='text-align:center;'>Yaxın saatlarda seçilmiş liqalarda oyun yoxdur.</p>";
+            return;
         }
-    });
-}
 
-function shareTelegram() {
-    const link = document.getElementById('ref-url').innerText;
-    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Mənimlə birlikdə futbol təxminləri et və qazan!`);
-}
-
-function showPage(id, title) {
-    document.querySelectorAll('.content > div').forEach(div => div.classList.add('hidden'));
-    document.getElementById('page-' + id).classList.remove('hidden');
-    document.getElementById('page-title').innerText = title;
-    document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
-    
-    // Aktiv tabı vizual olaraq dəyişmək üçün (əgər event varsa)
-    if (window.event) {
-        event.currentTarget.classList.add('active');
+        games.forEach(g => {
+            const matchTime = new Date(g.st).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+            
+            list.innerHTML += `<div class="match-card">
+                <div style="text-align:center;"><small style="color:var(--main-green)">${g.l}</small><br><small>${matchTime}</small><br><strong>${g.h} - ${g.a}</strong></div>
+                <div class="ai-stats-row"><span>1: %${Math.floor(Math.random()*20+40)}</span><span>X: %25</span><span>2: %${Math.floor(Math.random()*20+15)}</span></div>
+            </div>`;
+            
+            sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}')">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px;"><b>${matchTime}</b> | ${g.h} - ${g.a}</span>
+                    <div onclick="event.stopPropagation()">
+                        <input type="number" class="score-input" placeholder="0"> - <input type="number" class="score-input" placeholder="0">
+                    </div>
+                </div>
+            </div>`;
+        });
+    } catch (err) {
+        list.innerHTML = "<p style='text-align:center;'>API bağlantı xətası.</p>";
     }
 }
 
-// Reytinq cədvəli
-const leaders = ["Murad_AI", "Elvin_90", "Zaur_Star", "Futbolçu", "Analitik_1", "User_777", "Azər_FK", "Kral_Bet", "Score_Master", "Pərvin"];
-const rankCont = document.getElementById('reytinq-container');
-leaders.forEach((name, i) => {
-    rankCont.innerHTML += `<div class="match-card" style="display:flex; justify-content:space-between;">
-        <span>${i+1}. ${name}</span><b>${55 - i*4} Qalib</b>
-    </div>`;
-});
+let selectedGames = [];
+function selectGame(id) {
+    const card = document.getElementById('card-'+id);
+    if(selectedGames.includes(id)) {
+        selectedGames = selectedGames.filter(i => i !== id);
+        card.classList.remove('selected-card');
+    } else if(selectedGames.length < 5) {
+        selectedGames.push(id);
+        card.classList.add('selected-card');
+    }
+    document.getElementById('selected-count').innerText = selectedGames.length;
+}
 
-initUser();
-fetchMatches();
+function showPage(id, title) {
+    document.querySelectorAll('.content > div').forEach(p => p.classList.add('hidden'));
+    document.getElementById('page-'+id).classList.remove('hidden');
+    document.getElementById('page-title').innerText = title;
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+}
+
+updateStats();
+getMatches();
 </script>
 </body>
 </html>
