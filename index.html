@@ -133,13 +133,11 @@
 </div>
 
 <script>
-// FOOTBALL-DATA.ORG RƏSMİ API İNTEQRASİYASI (REAL VAXT REJİMİ)
 const API_KEY = "d99fac0e9b3c4c6a9ec4615c7911908f";
 const tg = window.Telegram.WebApp;
 tg.expand();
 
 let selectedGames = [];
-// Məlumatların silinməməsi üçün yaddaş sistemi
 let data = JSON.parse(localStorage.getItem('futbol_ai_secure')) || { t:0, w:0, r:0 };
 
 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -164,14 +162,16 @@ async function getMatches() {
     const sList = document.getElementById('selection-list');
     list.innerHTML = "<p style='text-align:center;'>Oyunlar hazırlanır...</p>";
 
+    // CORS blokunu aşmaq üçün Proxy əlavə edildi
+    const proxy = "https://api.allorigins.win/raw?url=";
+    const targetUrl = "https://api.football-data.org/v4/matches";
+
     try {
-        // Real və qanuni datanı çəkirik (Off-line/Saxta deyil)
-        const response = await fetch('https://api.football-data.org/v4/matches', {
+        const response = await fetch(proxy + encodeURIComponent(targetUrl), {
             headers: { 'X-Auth-Token': API_KEY }
         });
         const result = await response.json();
         const now = new Date();
-        // Gələcək real oyunları filtrləyirik
         const futureGames = (result.matches || []).filter(m => new Date(m.utcDate) > now).slice(0, 30);
 
         list.innerHTML = ""; sList.innerHTML = "";
@@ -229,7 +229,6 @@ function selectGame(id) {
 function confirmCoupon() {
     if(selectedGames.length === 0) return alert("Oyun seçin!");
     data.t++;
-    // Verilənləri yaddaşa yazırıq
     localStorage.setItem('futbol_ai_secure', JSON.stringify(data));
     updateStats();
     alert("Kupon qəbul edildi! Nəticələr oyun bitdikdən sonra yenilənəcək.");
@@ -248,7 +247,6 @@ function showPage(id, title) {
     }
 }
 
-// İlkin yükləmə
 updateStats();
 getMatches();
 </script>
