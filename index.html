@@ -135,14 +135,12 @@
 </div>
 
 <script>
-// Sənin kopyaladığın API Key və Host
 const API_KEY = "2265fceb51msh784b013337cecbp146572jsn0d4e6aecf921";
 const API_HOST = "soccer-football-info.p.rapidapi.com";
 
 const tg = window.Telegram.WebApp;
 tg.expand();
 
-// Telegram Profil Məlumatları
 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const u = tg.initDataUnsafe.user;
     document.getElementById('user-name').innerText = u.first_name;
@@ -152,7 +150,6 @@ if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
     document.getElementById('tg-link').href = `https://t.me/share/url?url=${ref}`;
 }
 
-// Yaddaş Sistemi (Data silinmir)
 let data = JSON.parse(localStorage.getItem('futbol_ai')) || { t:0, w:0, r:0 };
 function updateStats() {
     document.getElementById('stat-total').innerText = data.t;
@@ -171,64 +168,75 @@ function confirmCoupon() {
     tg.HapticFeedback.notificationOccurred('success');
 }
 
-// Oyunları API-dən Çəkmək (Xüsusi Filtr ilə)
 async function getMatches() {
     const list = document.getElementById('ai-match-list');
     const sList = document.getElementById('selection-list');
-    const today = new Date().toISOString().split('T')[0];
+    list.innerHTML = "<p style='text-align:center;'>Oyunlar hazırlanır...</p>";
+    
+    let allGames = [];
+    const now = new Date().getTime();
 
-    try {
-        const response = await fetch(`https://${API_HOST}/matches/list/date/${today}/`, {
-            method: "GET",
-            headers: { "x-rapidapi-key": API_KEY, "x-rapidapi-host": API_HOST }
-        });
-        const result = await response.json();
-        
-        // Filter: Yalnız seçilmiş liqalar və başlamamış oyunlar
-        const now = new Date().getTime();
-        const games = (result.result || []).filter(m => {
-            const league = m.l.toLowerCase();
-            const startTime = new Date(m.st).getTime();
-            
-            const isTargetLeague = league.includes("azerbaijan") || 
-                                   league.includes("turkey") || 
-                                   league.includes("premier league") || 
-                                   league.includes("la liga") || 
-                                   league.includes("serie a") || 
-                                   league.includes("bundesliga") || 
-                                   league.includes("ligue 1");
+    for (let i = 0; i < 5; i++) {
+        if (allGames.length >= 40) break;
+        let d = new Date();
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
 
-            return isTargetLeague && startTime > now;
-        });
-
-        list.innerHTML = "";
-        sList.innerHTML = "";
-
-        if (games.length === 0) {
-            list.innerHTML = "<p style='text-align:center;'>Yaxın saatlarda seçilmiş liqalarda oyun yoxdur.</p>";
-            return;
-        }
-
-        games.forEach(g => {
-            const matchTime = new Date(g.st).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-            
-            list.innerHTML += `<div class="match-card">
-                <div style="text-align:center;"><small style="color:var(--main-green)">${g.l}</small><br><small>${matchTime}</small><br><strong>${g.h} - ${g.a}</strong></div>
-                <div class="ai-stats-row"><span>1: %${Math.floor(Math.random()*20+40)}</span><span>X: %25</span><span>2: %${Math.floor(Math.random()*20+15)}</span></div>
-            </div>`;
-            
-            sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}')">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:13px;"><b>${matchTime}</b> | ${g.h} - ${g.a}</span>
-                    <div onclick="event.stopPropagation()">
-                        <input type="number" class="score-input" placeholder="0"> - <input type="number" class="score-input" placeholder="0">
-                    </div>
-                </div>
-            </div>`;
-        });
-    } catch (err) {
-        list.innerHTML = "<p style='text-align:center;'>API bağlantı xətası.</p>";
+        try {
+            const response = await fetch(`https://${API_HOST}/matches/list/date/${dateStr}/`, {
+                method: "GET",
+                headers: { "x-rapidapi-key": API_KEY, "x-rapidapi-host": API_HOST }
+            });
+            const result = await response.json();
+            if (result.result) {
+                const futureGames = result.result.filter(m => {
+                    return new Date(m.st).getTime() > now;
+                });
+                allGames.push(...futureGames);
+            }
+        } catch (err) { console.log(dateStr + " xətası"); }
     }
+    allGames.sort((a, b) => new Date(a.st) - new Date(b.st));
+    renderUI(allGames);
+}
+
+function renderUI(games) {
+    const list = document.getElementById('ai-match-list');
+    const sList = document.getElementById('selection-list');
+    list.innerHTML = ""; sList.innerHTML = "";
+
+    if (games.length === 0) {
+        list.innerHTML = "<p style='text-align:center;'>Oyun tapılmadı.</p>";
+        return;
+    }
+
+    games.forEach(g => {
+        const d = new Date(g.st);
+        const dateDisplay = d.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
+        const timeDisplay = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+
+        list.innerHTML += `<div class="match-card">
+            <div style="text-align:center;">
+                <small style="color:var(--yellow)">${dateDisplay} | ${timeDisplay}</small><br>
+                <small style="color:#888">${g.l}</small><br>
+                <strong>${g.h} - ${g.a}</strong>
+            </div>
+            <div class="ai-stats-row">
+                <span>1: %${Math.floor(Math.random()*25+40)}</span>
+                <span>X: %${Math.floor(Math.random()*15+20)}</span>
+                <span>2: %${Math.floor(Math.random()*20+20)}</span>
+            </div>
+        </div>`;
+        
+        sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}')">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12px;"><b>${dateDisplay} ${timeDisplay}</b><br>${g.h} - ${g.a}</span>
+                <div onclick="event.stopPropagation()">
+                    <input type="number" class="score-input" placeholder="0"> - <input type="number" class="score-input" placeholder="0">
+                </div>
+            </div>
+        </div>`;
+    });
 }
 
 let selectedGames = [];
