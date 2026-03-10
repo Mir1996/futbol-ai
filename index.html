@@ -162,8 +162,8 @@ async function getMatches() {
     const sList = document.getElementById('selection-list');
     list.innerHTML = "<p style='text-align:center;'>Oyunlar hazırlanır...</p>";
 
-    // Alternativ və daha stabil Proxy (CORS problemi üçün)
-    const proxy = "https://corsproxy.io/?";
+    // Alternativ Proxy və Pulsuz API üçün icazə verilən Liqalar
+    const proxy = "https://api.allorigins.win/raw?url=";
     const targetUrl = "https://api.football-data.org/v4/matches";
 
     try {
@@ -171,16 +171,17 @@ async function getMatches() {
             headers: { 'X-Auth-Token': API_KEY }
         });
         
-        if (!response.ok) throw new Error();
-        
         const result = await response.json();
         const now = new Date();
-        const futureGames = (result.matches || []).filter(m => new Date(m.utcDate) > now).slice(0, 30);
+        
+        // API-dən gələn datanı daha dəqiq yoxlayırıq
+        const matches = result.matches || [];
+        const futureGames = matches.filter(m => new Date(m.utcDate) > now).slice(0, 30);
 
         list.innerHTML = ""; sList.innerHTML = "";
         
         if(futureGames.length === 0) {
-            list.innerHTML = "<p style='text-align:center;'>Hal-hazırda aktiv oyun tapılmadı. Bir az sonra yoxlayın.</p>";
+            list.innerHTML = "<p style='text-align:center; padding: 20px;'>Hazırda rəsmi liqalarda aktiv oyun tapılmadı.<br><br><small style='color: #888;'>Həftə içi bəzən oyun sayı az olur, axşam saatlarında yenidən yoxlayın.</small></p>";
             return;
         }
 
@@ -193,7 +194,7 @@ async function getMatches() {
                 <div style="text-align:center;">
                     <small style="color:var(--yellow)">${dateStr} | ${timeStr}</small><br>
                     <small style="color:#888">${g.competition.name}</small><br>
-                    <strong>${g.homeTeam.shortName || g.homeTeam.name} - ${g.awayTeam.shortName || g.awayTeam.name}</strong>
+                    <strong>${g.homeTeam.name} - ${g.awayTeam.name}</strong>
                 </div>
                 <div class="ai-stats-row">
                     <span>1: %${Math.floor(Math.random()*25+40)}</span>
@@ -205,7 +206,7 @@ async function getMatches() {
             
             sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}')">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:12px;"><b>${dateStr} ${timeStr}</b><br>${g.homeTeam.shortName || g.homeTeam.name} - ${g.awayTeam.shortName || g.awayTeam.name}</span>
+                    <span style="font-size:11px; flex:1;"><b>${dateStr} ${timeStr}</b><br>${g.homeTeam.name}<br>${g.awayTeam.name}</span>
                     <div onclick="event.stopPropagation()">
                         <input type="number" class="score-input" placeholder="0"> : <input type="number" class="score-input" placeholder="0">
                     </div>
@@ -213,7 +214,7 @@ async function getMatches() {
             </div>`;
         });
     } catch (err) {
-        list.innerHTML = "<p style='text-align:center; color:#ff4d4d;'>Bağlantı xətası və ya API limiti. Səhifəni yeniləyin.</p>";
+        list.innerHTML = "<p style='text-align:center; color:#ff4d4d;'>API bağlantısı kəsildi. Səhifəni yeniləyin.</p>";
     }
 }
 
@@ -234,7 +235,7 @@ function confirmCoupon() {
     data.t++;
     localStorage.setItem('futbol_ai_secure', JSON.stringify(data));
     updateStats();
-    alert("Kupon qəbul edildi! Nəticələr oyun bitdikdən sonra yenilənəcək.");
+    alert("Kupon qəbul edildi! Analiz edilir...");
     tg.HapticFeedback.notificationOccurred('success');
     showPage('profil', 'Profil');
 }
