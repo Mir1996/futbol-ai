@@ -157,64 +157,79 @@ function updateStats() {
     document.getElementById('stat-ref').innerText = data.r;
 }
 
+// Əsas funksiya: Bağlantı xətasını aradan qaldırmaq üçün ikiqat yoxlama
 async function getMatches() {
     const list = document.getElementById('ai-match-list');
     const sList = document.getElementById('selection-list');
     list.innerHTML = "<p style='text-align:center;'>Oyunlar hazırlanır...</p>";
 
-    // Alternativ Proxy və Pulsuz API üçün icazə verilən Liqalar
-    const proxy = "https://api.allorigins.win/raw?url=";
+    // İki fərqli proxy (Əgər biri işləməsə, o biri işləsin)
+    const proxies = [
+        "https://api.allorigins.win/raw?url=",
+        "https://corsproxy.io/?"
+    ];
+    
     const targetUrl = "https://api.football-data.org/v4/matches";
+    let success = false;
 
-    try {
-        const response = await fetch(proxy + encodeURIComponent(targetUrl), {
-            headers: { 'X-Auth-Token': API_KEY }
-        });
-        
-        const result = await response.json();
-        const now = new Date();
-        
-        // API-dən gələn datanı daha dəqiq yoxlayırıq
-        const matches = result.matches || [];
-        const futureGames = matches.filter(m => new Date(m.utcDate) > now).slice(0, 30);
-
-        list.innerHTML = ""; sList.innerHTML = "";
-        
-        if(futureGames.length === 0) {
-            list.innerHTML = "<p style='text-align:center; padding: 20px;'>Hazırda rəsmi liqalarda aktiv oyun tapılmadı.<br><br><small style='color: #888;'>Həftə içi bəzən oyun sayı az olur, axşam saatlarında yenidən yoxlayın.</small></p>";
-            return;
-        }
-
-        futureGames.forEach(g => {
-            const d = new Date(g.utcDate);
-            const dateStr = d.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
-            const timeStr = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-
-            const cardContent = `
-                <div style="text-align:center;">
-                    <small style="color:var(--yellow)">${dateStr} | ${timeStr}</small><br>
-                    <small style="color:#888">${g.competition.name}</small><br>
-                    <strong>${g.homeTeam.name} - ${g.awayTeam.name}</strong>
-                </div>
-                <div class="ai-stats-row">
-                    <span>1: %${Math.floor(Math.random()*25+40)}</span>
-                    <span>X: %25</span>
-                    <span>2: %${Math.floor(Math.random()*20+15)}</span>
-                </div>`;
-
-            list.innerHTML += `<div class="match-card">${cardContent}</div>`;
+    for (let proxy of proxies) {
+        if (success) break;
+        try {
+            const response = await fetch(proxy + encodeURIComponent(targetUrl), {
+                headers: { 'X-Auth-Token': API_KEY }
+            });
             
-            sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}')">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:11px; flex:1;"><b>${dateStr} ${timeStr}</b><br>${g.homeTeam.name}<br>${g.awayTeam.name}</span>
-                    <div onclick="event.stopPropagation()">
-                        <input type="number" class="score-input" placeholder="0"> : <input type="number" class="score-input" placeholder="0">
+            if (!response.ok) continue;
+            
+            const result = await response.json();
+            const now = new Date();
+            const matches = result.matches || [];
+            const futureGames = matches.filter(m => new Date(m.utcDate) > now).slice(0, 30);
+
+            list.innerHTML = ""; sList.innerHTML = "";
+            
+            if(futureGames.length === 0) {
+                list.innerHTML = "<p style='text-align:center; padding: 20px;'>Hazırda aktiv rəsmi oyun tapılmadı.<br><small>Bir az sonra yenidən yoxlayın.</small></p>";
+                success = true;
+                continue;
+            }
+
+            futureGames.forEach(g => {
+                const d = new Date(g.utcDate);
+                const dateStr = d.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
+                const timeStr = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+
+                const cardContent = `
+                    <div style="text-align:center;">
+                        <small style="color:var(--yellow)">${dateStr} | ${timeStr}</small><br>
+                        <small style="color:#888">${g.competition.name}</small><br>
+                        <strong>${g.homeTeam.name} - ${g.awayTeam.name}</strong>
                     </div>
-                </div>
-            </div>`;
-        });
-    } catch (err) {
-        list.innerHTML = "<p style='text-align:center; color:#ff4d4d;'>API bağlantısı kəsildi. Səhifəni yeniləyin.</p>";
+                    <div class="ai-stats-row">
+                        <span>1: %${Math.floor(Math.random()*25+40)}</span>
+                        <span>X: %25</span>
+                        <span>2: %${Math.floor(Math.random()*20+15)}</span>
+                    </div>`;
+
+                list.innerHTML += `<div class="match-card">${cardContent}</div>`;
+                
+                sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}')">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:11px; flex:1;"><b>${dateStr} ${timeStr}</b><br>${g.homeTeam.name}<br>${g.awayTeam.name}</span>
+                        <div onclick="event.stopPropagation()">
+                            <input type="number" class="score-input" placeholder="0"> : <input type="number" class="score-input" placeholder="0">
+                        </div>
+                    </div>
+                </div>`;
+            });
+            success = true;
+        } catch (err) {
+            console.warn("Proxy xətası, digəri yoxlanılır...");
+        }
+    }
+
+    if (!success) {
+        list.innerHTML = "<p style='text-align:center; color:#ff4d4d;'>API bağlantısı kəsildi. Zəhmət olmasa səhifəni yeniləyin və ya interneti yoxlayın.</p>";
     }
 }
 
