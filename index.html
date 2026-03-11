@@ -66,7 +66,7 @@
 
 <div class="content">
     <div id="page-oyunlar">
-        <div id="ai-match-list"><p style="text-align:center;">5 günlük oyunlar gətirilir...</p></div>
+        <div id="ai-match-list"><p style="text-align:center;">5 günlük oyunlar hazırlanır...</p></div>
     </div>
 
     <div id="page-kupon" class="hidden">
@@ -98,7 +98,7 @@
 
         <div style="margin-top: 15px; background: #111; padding: 15px; border-radius: 10px; border: 1px solid var(--yellow);">
             <small style="color:var(--yellow)">📩 Admin Mesajı:</small>
-            <p id="admin-note" style="margin: 5px 0 0 0; font-size: 13px;">Gündəlik 2 kupon limitiniz var. 5 günlük oyunlar aktivdir!</p>
+            <p id="admin-note" style="margin: 5px 0 0 0; font-size: 13px;">Gündəlik 2 kupon limitiniz var. 5 günlük trend oyunlar aktivdir!</p>
         </div>
     </div>
 </div>
@@ -140,59 +140,68 @@ async function getMatches() {
     const sList = document.getElementById('selection-list');
     list.innerHTML = "<p style='text-align:center;'>Trend oyunlar gətirilir...</p>";
 
-    // Tarix aralığını hesablayırıq: Bu gün - 5 gün sonrası
     const dateFrom = new Date().toISOString().split('T')[0];
     const dateTo = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const url = `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+    const targetUrl = `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+    
+    // İki fərqli proxy (vasitəçi) - Biri işləməsə, digəri işləsin
+    const proxies = [
+        "https://api.allorigins.win/raw?url=",
+        "https://corsproxy.io/?"
+    ];
 
-    try {
-        const response = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url), {
-            headers: { 'X-Auth-Token': API_KEY }
-        });
-        const result = await response.json();
-        const now = new Date();
-        
-        let matches = (result.matches || []).filter(m => new Date(m.utcDate) > now);
+    let success = false;
+    for (let proxy of proxies) {
+        if (success) break;
+        try {
+            const response = await fetch(proxy + encodeURIComponent(targetUrl), {
+                headers: { 'X-Auth-Token': API_KEY }
+            });
+            if (!response.ok) continue;
 
-        // Liqa sıralamasına görə çeşidləmə
-        matches.sort((a, b) => {
-            let indexA = leagueOrder.indexOf(a.competition.id);
-            let indexB = leagueOrder.indexOf(b.competition.id);
-            if (indexA === -1) indexA = 999;
-            if (indexB === -1) indexB = 999;
-            return indexA - indexB;
-        });
+            const result = await response.json();
+            const now = new Date();
+            let matches = (result.matches || []).filter(m => new Date(m.utcDate) > now);
 
-        // Top 10 oyun (Məşhur liqalardan seçilmiş)
-        const top10 = matches.slice(0, 10);
-        list.innerHTML = ""; sList.innerHTML = "";
+            // Liqa sıralamasına görə çeşidləmə
+            matches.sort((a, b) => {
+                let indexA = leagueOrder.indexOf(a.competition.id);
+                let indexB = leagueOrder.indexOf(b.competition.id);
+                return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+            });
 
-        top10.forEach(g => {
-            const d = new Date(g.utcDate);
-            const dateStr = d.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
-            const timeStr = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+            const top10 = matches.slice(0, 10);
+            list.innerHTML = ""; sList.innerHTML = "";
             
-            const winProb = Math.floor(Math.random() * 20 + 45); 
-            const drawProb = 25;
-            const loseProb = 100 - winProb - drawProb;
+            top10.forEach(g => {
+                const d = new Date(g.utcDate);
+                const dateStr = d.toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
+                const timeStr = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+                
+                const winProb = Math.floor(Math.random() * 20 + 45); 
+                const html = `
+                    <div class="league-badge">🏆 ${g.competition.name}</div>
+                    <div style="text-align:center;">
+                        <small style="color:var(--yellow)">${dateStr} | ${timeStr}</small><br>
+                        <strong>${g.homeTeam.name} - ${g.awayTeam.name}</strong>
+                    </div>
+                    <div class="ai-stats-row">
+                        <span>1: %${winProb}</span><span>X: %25</span><span>2: %${75-winProb}</span>
+                    </div>`;
 
-            const html = `
-                <div class="league-badge">🏆 ${g.competition.name}</div>
-                <div style="text-align:center;">
-                    <small style="color:var(--yellow)">${dateStr} | ${timeStr}</small><br>
-                    <strong>${g.homeTeam.name} - ${g.awayTeam.name}</strong>
-                </div>
-                <div class="ai-stats-row">
-                    <span>1: %${winProb}</span><span>X: %${drawProb}</span><span>2: %${loseProb}</span>
+                list.innerHTML += `<div class="match-card">${html}</div>`;
+                sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}', '${g.homeTeam.name}', '${g.awayTeam.name}')">
+                    <b>${g.homeTeam.name} - ${g.awayTeam.name}</b><br><small>${dateStr} - ${g.competition.name}</small>
                 </div>`;
+            });
+            success = true;
+        } catch (err) {
+            console.error("Proxy xətası baş verdi, digəri yoxlanılır...");
+        }
+    }
 
-            list.innerHTML += `<div class="match-card">${html}</div>`;
-            sList.innerHTML += `<div class="match-card" id="card-${g.id}" onclick="selectGame('${g.id}', '${g.homeTeam.name}', '${g.awayTeam.name}')">
-                <b>${g.homeTeam.name} - ${g.awayTeam.name}</b><br><small>${dateStr} - ${g.competition.name}</small>
-            </div>`;
-        });
-    } catch (err) {
-        list.innerHTML = "<p style='text-align:center;'>API xətası. Bir az sonra yoxlayın.</p>";
+    if (!success) {
+        list.innerHTML = "<p style='text-align:center; color:var(--red);'>Bağlantı xətası. Zəhmət olmasa bir az sonra yenidən yoxlayın.</p>";
     }
 }
 
