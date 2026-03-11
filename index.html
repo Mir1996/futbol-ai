@@ -93,8 +93,15 @@
         
         #user-photo { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--main-green); margin-right: 12px; object-fit: cover; }
         .league-badge { background: var(--main-green); color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-bottom: 5px; display: inline-block; }
+        
         .status-win { color: var(--main-green); font-weight: bold; }
         .status-lose { color: var(--red); font-weight: bold; }
+        .status-pending { color: var(--yellow); font-weight: bold; }
+
+        .coupon-footer { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; font-size: 14px; }
+        .btn-share { background: var(--telegram); }
+        .btn-check { background: var(--yellow); color: black; }
     </style>
 </head>
 <body>
@@ -129,19 +136,19 @@
 
         <div style="margin-top: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 5px;">
             <p style="padding: 10px; border-bottom: 1px solid #333; margin: 0;">🎫 Toplam Kupon: <b id="stat-total" style="float:right">0</b></p>
-            <p style="padding: 10px; border-bottom: 1px solid #333; margin: 0;">🏆 Qalib Kuponlar: <b id="stat-win" style="float:right; color:var(--main-green)">0</b></p>
-            <p style="padding: 10px; margin: 0;">❌ Uduzan Kuponlar: <b id="stat-lose" style="float:right; color:var(--red)">0</b></p>
+            <p style="padding: 10px; border-bottom: 1px solid #333; margin: 0;">🏆 Qalib: <b id="stat-win" style="float:right; color:var(--main-green)">0</b></p>
+            <p style="padding: 10px; margin: 0;">❌ Uduzan: <b id="stat-lose" style="float:right; color:var(--red)">0</b></p>
         </div>
 
         <div style="margin-top: 15px; background: #111; padding: 15px; border-radius: 10px; border: 1px solid var(--yellow);">
             <small style="color:var(--yellow)">📩 Admin Mesajı:</small>
-            <p id="admin-note" style="margin: 5px 0 0 0; font-size: 13px;">Gündəlik 2 kupon limitiniz var. 5 günlük trend oyunlar aktivdir!</p>
+            <p id="admin-note" style="margin: 5px 0 0 0; font-size: 13px;">Gündəlik 5 kupon limitiniz var. 5 günlük trend oyunlar aktivdir!</p>
         </div>
     </div>
 </div>
 
 <div class="tab-bar">
-    <div class="tab-item active" id="tab-oyunlar" onclick="showPage('oyunlar', '5 Günlük Oyunlar')"><span class="tab-icon">📅</span>Oyunlar</div>
+    <div class="tab-item active" id="tab-oyunlar" onclick="showPage('oyunlar', '5 Günlük Analizlər')"><span class="tab-icon">📅</span>Oyunlar</div>
     <div class="tab-item" id="tab-kupon" onclick="showPage('kupon', 'Kupon Yarat')"><span class="tab-icon">🏆</span>Kupon</div>
     <div class="tab-item" id="tab-reytinq" onclick="showPage('reytinq', 'Reytinq')"><span class="tab-icon">📊</span>Reytinq</div>
     <div class="tab-item" id="tab-bildiris" onclick="showPage('bildiris', 'Kuponlar')"><span class="tab-icon">🔔</span>Kuponlar</div>
@@ -156,7 +163,8 @@ tg.expand();
 let selectedGames = [];
 let myCoupons = JSON.parse(localStorage.getItem('my_coupons')) || [];
 let data = JSON.parse(localStorage.getItem('futbol_ai_secure')) || { t:0, w:0, l:0, lastDate: "", dailyCount: 0 };
-const leagueOrder = [2001, 2021, 2014, 2015, 2019, 2002, 2003, 2017]; 
+// Azərbaycan liqası (2021) siyahıdan çıxarıldı
+const leagueOrder = [2001, 2014, 2015, 2019, 2002, 2003, 2017]; 
 
 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const user = tg.initDataUnsafe.user;
@@ -180,7 +188,7 @@ async function getMatches() {
     const dateTo = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const targetUrl = `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
     
-    const proxies = ["https://api.allorigins.win/raw?url=", "https://corsproxy.io/?"];
+    const proxies = ["https://corsproxy.io/?"];
     let success = false;
 
     for (let proxy of proxies) {
@@ -212,7 +220,7 @@ async function getMatches() {
                 
                 list.innerHTML += `
                     <div class="match-card">
-                        <div class="league-badge">🏆 ${g.competition.name}</div>
+                        <div class="league-badge">${g.competition.name}</div>
                         <div style="text-align:center;">
                             <small style="color:var(--yellow)">${dateStr} | ${timeStr}</small><br>
                             <strong>${g.homeTeam.name} - ${g.awayTeam.name}</strong>
@@ -226,7 +234,6 @@ async function getMatches() {
                     <div class="match-card coupon-match" id="card-${g.id}" onclick="selectGame('${g.id}', '${g.homeTeam.name.replace(/'/g, "")}', '${g.awayTeam.name.replace(/'/g, "")}')">
                         <div style="flex:1;">
                             <strong style="font-size:14px; display:block;">${g.homeTeam.name} - ${g.awayTeam.name}</strong>
-                            <small style="color:#777; font-size:11px;">${dateStr} - ${g.competition.name}</small>
                         </div>
                         <div class="score-box" onclick="event.stopPropagation()">
                             <input type="tel" class="score-input" id="score-h-${g.id}" value="0" maxlength="1" oninput="autoSelect('${g.id}', '${g.homeTeam.name.replace(/'/g, "")}', '${g.awayTeam.name.replace(/'/g, "")}')">
@@ -236,20 +243,13 @@ async function getMatches() {
                     </div>`;
             });
             success = true;
-        } catch (err) { console.error("Proxy error..."); }
-    }
-
-    if (!success) {
-        list.innerHTML = "<p style='text-align:center; color:var(--red);'>Bağlantı xətası. Yenidən yoxlayın.</p>";
+        } catch (err) { console.error("API error"); }
     }
 }
 
-// YENİ: Rəqəm yazılan kimi oyunu avtomatik seçir
 function autoSelect(id, h, a) {
     const index = selectedGames.findIndex(x => x.id === id);
-    if(index === -1) {
-        selectGame(id, h, a);
-    }
+    if(index === -1) selectGame(id, h, a);
 }
 
 function selectGame(id, h, a) {
@@ -267,8 +267,8 @@ function selectGame(id, h, a) {
 
 function confirmCoupon() {
     const today = new Date().toLocaleDateString();
-    if(data.lastDate === today && data.dailyCount >= 2) return alert("Günlük 2 kupon limitiniz dolub!");
-    
+    // Gündəlik limit 5-ə dəyişdirildi
+    if(data.lastDate === today && data.dailyCount >= 5) return alert("Günlük 5 kupon limitiniz dolub!");
     if(selectedGames.length < 2) return alert("Minimum 2 oyun seçin!");
 
     const finalGames = selectedGames.map(sg => {
@@ -276,24 +276,20 @@ function confirmCoupon() {
         const aScore = document.getElementById(`score-a-${sg.id}`).value;
         return {
             id: sg.id, h: sg.h, a: sg.a,
-            predictedScore: `${hScore}-${aScore}`,
-            status: Math.random() > 0.5 ? 'win' : 'lose'
+            predictedScore: `${hScore}-${aScore}`
         };
     });
 
-    const couponStatus = finalGames.every(g => g.status === 'win') ? 'win' : 'lose';
     const newCoupon = {
         id: Date.now(),
         date: new Date().toLocaleString(),
         games: finalGames,
-        status: couponStatus
+        status: 'pending'
     };
 
     myCoupons.unshift(newCoupon);
     localStorage.setItem('my_coupons', JSON.stringify(myCoupons));
-
     data.t++;
-    if(couponStatus === 'win') data.w++; else data.l++;
     data.dailyCount = (data.lastDate === today) ? data.dailyCount + 1 : 1;
     data.lastDate = today;
     localStorage.setItem('futbol_ai_secure', JSON.stringify(data));
@@ -301,10 +297,20 @@ function confirmCoupon() {
     alert("Kupon təsdiqləndi! ✅");
     selectedGames = [];
     document.getElementById('selected-count').innerText = "0";
-    document.querySelectorAll('.selected-card').forEach(el => el.classList.remove('selected-card'));
-    
-    updateStats();
     showPage('bildiris', 'Kuponlar');
+    updateStats();
+}
+
+function checkCoupon(id) {
+    const coupon = myCoupons.find(c => c.id === id);
+    if(!coupon || coupon.status !== 'pending') return;
+    
+    coupon.status = Math.random() > 0.5 ? 'win' : 'lose';
+    if(coupon.status === 'win') data.w++; else data.l++;
+    
+    localStorage.setItem('my_coupons', JSON.stringify(myCoupons));
+    localStorage.setItem('futbol_ai_secure', JSON.stringify(data));
+    updateStats();
 }
 
 function renderMyCoupons() {
@@ -314,18 +320,21 @@ function renderMyCoupons() {
     
     myCoupons.forEach(c => {
         let gamesHtml = c.games.map(g => `
-            <div style="display:flex; justify-content:space-between; font-size:13px; margin:3px 0; border-bottom: 1px solid #222; padding-bottom: 3px;">
-                <span>${g.h} - ${g.a} (${g.predictedScore})</span>
-                <span>${g.status === 'win' ? '✅' : '❌'}</span>
+            <div style="font-size:13px; margin:5px 0;">
+                • ${g.h} - ${g.a} <span style="color:var(--main-green); font-weight:bold;">(${g.predictedScore})</span>
             </div>`).join('');
             
         container.innerHTML += `
-            <div class="match-card" style="border-left: 5px solid ${c.status === 'win' ? 'var(--main-green)' : 'var(--red)'}">
+            <div class="match-card" style="border-left: 5px solid ${c.status === 'win' ? 'var(--main-green)' : (c.status === 'lose' ? 'var(--red)' : 'var(--yellow)')}">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <small style="color:#888;">${c.date}</small>
-                    <span class="status-${c.status}">${c.status === 'win' ? 'UDUB' : 'UDUZUB'}</span>
+                    <span class="status-${c.status}">${c.status === 'win' ? 'WIN' : (c.status === 'lose' ? 'LOSE' : 'PENDING')}</span>
                 </div>
                 ${gamesHtml}
+                <div class="coupon-footer">
+                    <button class="btn-action btn-share" onclick="alert('Tezliklə...')">Paylaş 📩</button>
+                    ${c.status === 'pending' ? `<button class="btn-action btn-check" onclick="checkCoupon(${c.id})">Yoxla 🔍</button>` : ''}
+                </div>
             </div>`;
     });
 }
@@ -334,9 +343,9 @@ function showPage(id, title) {
     document.querySelectorAll('.content > div').forEach(p => p.classList.add('hidden'));
     document.getElementById('page-'+id).classList.remove('hidden');
     document.getElementById('page-title').innerText = title;
-    
     document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-'+id).classList.add('active');
+    if(id === 'bildiris') renderMyCoupons();
 }
 
 updateStats();
