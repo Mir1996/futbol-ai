@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Futbol AI Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --main-green: #4db300;
@@ -163,7 +164,6 @@ tg.expand();
 let selectedGames = [];
 let myCoupons = JSON.parse(localStorage.getItem('my_coupons')) || [];
 let data = JSON.parse(localStorage.getItem('futbol_ai_secure')) || { t:0, w:0, l:0, lastDate: "", dailyCount: 0 };
-// Azərbaycan liqası (2021) siyahıdan çıxarıldı
 const leagueOrder = [2001, 2014, 2015, 2019, 2002, 2003, 2017]; 
 
 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -267,7 +267,6 @@ function selectGame(id, h, a) {
 
 function confirmCoupon() {
     const today = new Date().toLocaleDateString();
-    // Gündəlik limit 5-ə dəyişdirildi
     if(data.lastDate === today && data.dailyCount >= 5) return alert("Günlük 5 kupon limitiniz dolub!");
     if(selectedGames.length < 2) return alert("Minimum 2 oyun seçin!");
 
@@ -276,7 +275,8 @@ function confirmCoupon() {
         const aScore = document.getElementById(`score-a-${sg.id}`).value;
         return {
             id: sg.id, h: sg.h, a: sg.a,
-            predictedScore: `${hScore}-${aScore}`
+            predictedScore: `${hScore}-${aScore}`,
+            gameStatus: 'pending' 
         };
     });
 
@@ -305,12 +305,65 @@ function checkCoupon(id) {
     const coupon = myCoupons.find(c => c.id === id);
     if(!coupon || coupon.status !== 'pending') return;
     
-    coupon.status = Math.random() > 0.5 ? 'win' : 'lose';
-    if(coupon.status === 'win') data.w++; else data.l++;
-    
+    let allFinished = true;
+    let hasLost = false;
+
+    coupon.games.forEach(g => {
+        if(g.gameStatus === 'pending') {
+            if(Math.random() > 0.3) {
+                g.gameStatus = Math.random() > 0.5 ? 'win' : 'lose';
+            } else {
+                allFinished = false;
+            }
+        }
+        if(g.gameStatus === 'lose') hasLost = true;
+    });
+
+    if(hasLost) {
+        coupon.status = 'lose';
+        data.l++;
+    } 
+    else if(allFinished) {
+        coupon.status = 'win';
+        data.w++;
+    }
+
     localStorage.setItem('my_coupons', JSON.stringify(myCoupons));
     localStorage.setItem('futbol_ai_secure', JSON.stringify(data));
     updateStats();
+}
+
+// ŞƏKİL PAYLAŞMA FUNKSİYASI (YENİ)
+async function shareCoupon(id) {
+    const couponCard = document.getElementById('coupon-card-' + id);
+    const userName = document.getElementById('user-name').innerText;
+    
+    if(!couponCard) return;
+
+    // Şəkil yaradılarkən istifadəçi adını müvəqqəti əlavə edirik
+    const waterMark = document.createElement('div');
+    waterMark.style = "text-align:center; color:#4db300; font-size:12px; margin-top:10px; font-weight:bold;";
+    waterMark.innerText = userName + " - AI ANALİZ";
+    couponCard.appendChild(waterMark);
+
+    try {
+        const canvas = await html2canvas(couponCard, {
+            backgroundColor: '#0d0d0d',
+            scale: 2
+        });
+        
+        const image = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.download = `AI_Kupon_${id}.png`;
+        link.href = image;
+        link.click();
+        
+        tg.HapticFeedback.notificationOccurred('success');
+    } catch (e) {
+        alert("Şəkil yaradıla bilmədi.");
+    } finally {
+        couponCard.removeChild(waterMark);
+    }
 }
 
 function renderMyCoupons() {
@@ -319,20 +372,22 @@ function renderMyCoupons() {
     container.innerHTML = myCoupons.length ? "" : "<p style='text-align:center; color:#888;'>Hələ kupon yaratmamısınız.</p>";
     
     myCoupons.forEach(c => {
-        let gamesHtml = c.games.map(g => `
-            <div style="font-size:13px; margin:5px 0;">
-                • ${g.h} - ${g.a} <span style="color:var(--main-green); font-weight:bold;">(${g.predictedScore})</span>
-            </div>`).join('');
+        let gamesHtml = c.games.map(g => {
+            let gStat = g.gameStatus === 'win' ? '✅' : (g.gameStatus === 'lose' ? '❌' : '⏳');
+            return `<div style="font-size:13px; margin:5px 0;">
+                ${gStat} ${g.h} - ${g.a} <span style="color:var(--main-green); font-weight:bold;">(${g.predictedScore})</span>
+            </div>`
+        }).join('');
             
         container.innerHTML += `
-            <div class="match-card" style="border-left: 5px solid ${c.status === 'win' ? 'var(--main-green)' : (c.status === 'lose' ? 'var(--red)' : 'var(--yellow)')}">
+            <div class="match-card" id="coupon-card-${c.id}" style="border-left: 5px solid ${c.status === 'win' ? 'var(--main-green)' : (c.status === 'lose' ? 'var(--red)' : 'var(--yellow)')}">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <small style="color:#888;">${c.date}</small>
-                    <span class="status-${c.status}">${c.status === 'win' ? 'WIN' : (c.status === 'lose' ? 'LOSE' : 'PENDING')}</span>
+                    <span class="status-${c.status}">${c.status === 'win' ? 'QAZANDI 🏆' : (c.status === 'lose' ? 'UDUZDU ❌' : 'GÖZLƏNİLİR ⏳')}</span>
                 </div>
                 ${gamesHtml}
                 <div class="coupon-footer">
-                    <button class="btn-action btn-share" onclick="alert('Tezliklə...')">Paylaş 📩</button>
+                    <button class="btn-action btn-share" onclick="shareCoupon(${c.id})">Paylaş 📩</button>
                     ${c.status === 'pending' ? `<button class="btn-action btn-check" onclick="checkCoupon(${c.id})">Yoxla 🔍</button>` : ''}
                 </div>
             </div>`;
