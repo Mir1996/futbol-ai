@@ -198,9 +198,9 @@
 </div>
 
 <script>
-// Supabase Ayarları
+// Supabase Ayarları - DÜZƏLDİLDİ
 const SUPABASE_URL = 'https://onhmllyobgeotujyhpqh.supabase.co';
-const SUPABASE_KEY = 'Sb_publishable_iT70hZ6J_M34XRFzyp05QQ_g0sIbtnV';
+const SUPABASE_KEY = 'EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uaG1sbHlvYmdlb3R1anlocHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzkxODgsImV4cCI6MjA4ODgxNTE4OH0.2ahSM711ApFdaedy7_K8VcGHpCm8vniBnI3_vu3eu7M';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const API_KEY = "d99fac0e9b3c4c6a9ec4615c7911908f";
@@ -216,7 +216,6 @@ function cleanName(name) {
     return name.replace(/\b(FC|CF|SSC|AFC|AS|RCD|RC|OSC|RB|SLB|UD|CD|AZ)\b/gi, '').trim();
 }
 
-// Bazada İstifadəçini Yoxla və Qeyd et
 async function initUser() {
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         const user = tg.initDataUnsafe.user;
@@ -246,7 +245,6 @@ function updateStats() {
     document.getElementById('stat-lose').innerText = currentUserData.l;
 }
 
-// Canlı Reytinqi Yenilə
 async function updateLeaderboard() {
     const listContainer = document.getElementById('reytinq-list');
     listContainer.innerHTML = "<p style='text-align:center;'>📊 Yüklənir...</p>";
@@ -385,7 +383,7 @@ async function checkCoupon(id) {
         
         if(isWin) {
             currentUserData.w++;
-            currentUserData.points++;
+            currentUserData.points += 10;
             await supabaseClient.from('users').update({ 
                 wins: currentUserData.w, 
                 points: currentUserData.points 
